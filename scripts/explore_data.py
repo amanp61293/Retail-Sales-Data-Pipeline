@@ -1,77 +1,61 @@
 
-import pandas as pd
+import requests
+import zipfile
 from pathlib import Path
 
-# Find all CSV files in the data folder
-data_folder = Path("data")
-csv_files = sorted(data_folder.glob("*.csv"))
+URL = "https://idh-be.iowa.gov/api/v1/datasets/1263/rows.csv"
 
-# Read the first 1,000 rows from each file
-dataframes = []
+OUTPUT_DIR = Path("data/raw")
+ZIP_FILE = OUTPUT_DIR / "iowa_liquor_sales_2026.zip"
+EXTRACT_DIR = OUTPUT_DIR / "extracted"
 
-for file in csv_files:
-    df = pd.read_csv(file, nrows=1000)
-    dataframes.append(df)
-    print(f"Loaded {file.name}: {len(df)} rows")
-
-# Combine the data
-df = pd.concat(dataframes, ignore_index=True)
-
-print("\nCombined dataset shape:", df.shape)
-
-print("\nColumn names:")
-print(df.columns.tolist())
-
-print("\nFirst 5 records:")
-print(df.head())
+HEADERS = {
+    "User-Agent": "Mozilla/5.0",
+    "Accept": "text/csv",
+}
 
 
-# Examine column data types
-print("\nData types:")
-print(df.dtypes)
+def download_data():
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-# Count missing values
-print("\nMissing values per column:")
-print(df.isnull().sum())
+    print("Starting dataset download...")
 
-# Check for completely identical records
-print("\nDuplicate rows:", df.duplicated().sum())
+    with requests.get(
+        URL,
+        headers=HEADERS,
+        stream=True,
+        timeout=(30, 120)
+    ) as response:
+        response.raise_for_status()
 
-# Basic sales statistics
-print("\nSales statistics:")
-print(df[["sales_bottles", "sales_dollars", "sales_liters"]].describe())
+        with open(ZIP_FILE, "wb") as file:
+            for chunk in response.iter_content(chunk_size=1024 * 1024):
+                if chunk:
+                    file.write(chunk)
 
+    print("Download complete.")
 
-# Find records containing negative sales values
-negative_sales = df[
-    (df["sales_bottles"] < 0) |
-    (df["sales_dollars"] < 0) |
-    (df["sales_liters"] < 0)
-]
+    # Verify that the downloaded file is a ZIP archive
+    if not zipfile.is_zipfile(ZIP_FILE):
+        raise ValueError("Downloaded file is not a valid ZIP archive")
 
-print("\nNumber of records with negative sales:")
-print(len(negative_sales))
+    # Extract the CSV files
+    EXTRACT_DIR.mkdir(parents=True, exist_ok=True)
 
-print("\nNegative sales records:")
-print(
-    negative_sales[
-        [
-            "invoice_id",
-            "ordered_on",
-            "store_no",
-            "item_no",
-            "sales_bottles",
-            "sales_dollars",
-            "sales_liters"
+    with zipfile.ZipFile(ZIP_FILE, "r") as archive:
+        csv_files = [
+            name for name in archive.namelist()
+            if name.lower().endswith(".csv")
         ]
-    ].to_string(index=False)
-)
 
-# Check whether invoice IDs repeat
-print("\nUnique invoice IDs:", df["invoice_id"].nunique())
+        if not csv_files:
+            raise ValueError("ZIP archive contains no CSV files")
 
-# Check for repeated invoice and product combinations
-print(
-    "Repeated invoice-product combinations:",
-    df.duplicated(subset=["invoice_id", "item_no"]).sum()
-)
+        archive.extractall(EXTRACT_DIR)
+
+    print(f"Extracted {len(csv_files)} CSV files.")
+    print(f"Files saved to: {EXTRACT_DIR}")
+
+
+if __name__ == "__main__":
+    download_data()
