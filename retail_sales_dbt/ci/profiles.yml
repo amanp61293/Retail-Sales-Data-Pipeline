@@ -1,0 +1,16 @@
+
+retail_sales_dbt:
+  target: ci
+
+  outputs:
+    ci:
+      type: snowflake
+      account: "{{ env_var('SNOWFLAKE_ACCOUNT') }}"
+      user: "{{ env_var('SNOWFLAKE_USER') }}"
+      role: RETAIL_PIPELINE_ROLE
+      database: RETAIL_SALES_DB
+      warehouse: RETAIL_SALES_WH
+      schema: STAGING
+      threads: 4
+      private_key_path: "{{ env_var('SNOWFLAKE_KEY_PATH') }}"
+      private_key_passphrase: "{{ env_var('DBT_KEY_PASSPHRASE') }}"
