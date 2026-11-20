@@ -5,7 +5,45 @@ sources:
   - name: raw
     database: RETAIL_SALES_DB
     schema: RAW
+
     tables:
       - name: liquor_sales
         identifier: LIQUOR_SALES
-        description: "Raw Iowa liquor sales records loaded into Snowflake."
+        description: Raw Iowa liquor sales records loaded into Snowflake.
+
+        columns:
+          - name: invoice_id
+            data_tests:
+              - not_null
+
+          - name: ordered_on
+            data_tests:
+              - not_null
+
+          - name: store_no
+            data_tests:
+              - not_null
+
+          - name: item_no
+            data_tests:
+              - not_null
+
+          - name: vendor_number
+            data_tests:
+              - not_null
+
+          - name: bottle_volume_ml
+            data_tests:
+              - not_null
+
+          - name: sales_bottles
+            data_tests:
+              - not_null
+
+          - name: sales_dollars
+            data_tests:
+              - not_null
+
+          - name: sales_liters
+            data_tests:
+              - not_null
