@@ -1,0 +1,11 @@
+
+version: 2
+
+sources:
+  - name: raw
+    database: RETAIL_SALES_DB
+    schema: RAW
+    tables:
+      - name: liquor_sales
+        identifier: LIQUOR_SALES
+        description: "Raw Iowa liquor sales records loaded into Snowflake."

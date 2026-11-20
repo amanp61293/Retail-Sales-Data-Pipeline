@@ -1,0 +1,26 @@
+
+SELECT
+    invoice_id,
+    ordered_on,
+    store_no,
+    TRIM(store_name) AS store_name,
+    TRIM(store_address) AS store_address,
+    TRIM(store_city) AS store_city,
+    store_zip_code,
+    county_fips_code,
+    TRIM(county_name) AS county_name,
+    category_code,
+    TRIM(category_name) AS category_name,
+    vendor_number,
+    TRIM(vendor_name) AS vendor_name,
+    item_no,
+    TRIM(im_desc) AS product_description,
+    pack,
+    bottle_volume_ml,
+    state_bottle_cost,
+    state_bottle_retail,
+    sales_bottles,
+    sales_dollars,
+    sales_liters,
+    sales_gallons
+FROM {{ source('raw', 'liquor_sales') }}
