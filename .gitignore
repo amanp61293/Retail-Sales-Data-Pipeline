@@ -18,3 +18,11 @@ data/
 
 # Editor files
 .vscode/
+
+# Tableau local/session temporary files
+*.twbr
+*.twbr.*
+~*.twbr
+
+handout/
+snowflake.sql

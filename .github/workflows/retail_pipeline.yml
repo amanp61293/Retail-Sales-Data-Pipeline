@@ -1,0 +1,96 @@
+
+name: Retail Sales Data Pipeline
+
+on:
+  workflow_dispatch:
+
+  #push:
+    #branches:
+      #- dev
+    #paths:
+      #- '.github/workflows/retail_pipeline.yml'
+
+  #schedule:
+    #- cron: '17 12 5 * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: retail-sales-pipeline
+  cancel-in-progress: false
+
+jobs:
+  pipeline:
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: us-east-2
+
+      S3_BUCKET_NAME: ${{ secrets.S3_BUCKET_NAME }}
+
+      SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+      SNOWFLAKE_USER: ${{ secrets.SNOWFLAKE_USER }}
+      SNOWFLAKE_ROLE: RETAIL_PIPELINE_ROLE
+
+      DBT_KEY_PASSPHRASE: ${{ secrets.SNOWFLAKE_KEY_PASSPHRASE }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Configure Snowflake private key
+        env:
+          SNOWFLAKE_PRIVATE_KEY: ${{ secrets.SNOWFLAKE_PRIVATE_KEY }}
+        run: |
+          umask 077
+          printf '%s\n' "$SNOWFLAKE_PRIVATE_KEY" > "$RUNNER_TEMP/snowflake_key.p8"
+          chmod 600 "$RUNNER_TEMP/snowflake_key.p8"
+          echo "SNOWFLAKE_KEY_PATH=$RUNNER_TEMP/snowflake_key.p8" >> "$GITHUB_ENV"
+
+      - name: Verify AWS connection
+        run: |
+          aws sts get-caller-identity
+          aws s3api head-bucket --bucket "$S3_BUCKET_NAME"
+
+      - name: Verify Snowflake connection
+        working-directory: retail_sales_dbt
+        run: dbt debug --profiles-dir ci
+
+      - name: Extract source data
+        run: python scripts/extract_data.py
+
+      - name: Validate source data
+        run: python scripts/validate_data.py
+
+      - name: Run Python tests
+        run: python -m pytest tests/ -v
+
+      - name: Archive and load snapshot
+        run: python scripts/load_snapshot.py
+
+      - name: Build and test dbt models
+        working-directory: retail_sales_dbt
+        run: dbt build --profiles-dir ci
+
+      - name: Pipeline success
+        run: echo "Retail sales pipeline completed successfully."
+
+      - name: Remove temporary private key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/snowflake_key.p8"
