@@ -4,14 +4,14 @@ name: Retail Sales Data Pipeline
 on:
   workflow_dispatch:
 
-  push:
-    branches:
-      - dev
-    paths:
-      - '.github/workflows/retail_pipeline.yml'
+  #push:
+    #branches:
+      #- dev
+    #paths:
+      #- '.github/workflows/retail_pipeline.yml'
 
-  schedule:
-    - cron: '17 12 5 * *'
+  #schedule:
+    #- cron: '17 12 5 * *'
 
 permissions:
   contents: read
